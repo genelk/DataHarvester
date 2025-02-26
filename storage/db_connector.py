@@ -1,7 +1,6 @@
 import sqlite3
 import pandas as pd
 import os
-from sqlalchemy import create_engine
 
 class DatabaseConnector:
     """
@@ -16,7 +15,6 @@ class DatabaseConnector:
             db_path: Path to SQLite database file
         """
         self.db_path = db_path
-        self.engine = create_engine(f"sqlite:///{db_path}")
     
     def create_tables(self):
         """
@@ -29,21 +27,24 @@ class DatabaseConnector:
         # Create movies table
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS movies (
-            id INTEGER PRIMARY KEY,
-            title TEXT,
-            original_title TEXT,
-            overview TEXT,
-            popularity REAL,
-            vote_average REAL,
-            vote_count INTEGER,
-            release_date TEXT,
-            release_year INTEGER,
-            genres TEXT,
-            adult INTEGER,
-            poster_path TEXT,
-            backdrop_path TEXT,
-            original_language TEXT,
-            weighted_rating REAL
+        id INTEGER PRIMARY KEY,
+        title TEXT,
+        original_title TEXT,
+        overview TEXT,
+        popularity REAL,
+        vote_average REAL,
+        vote_count INTEGER,
+        release_date TEXT,
+        release_year INTEGER,
+        genres TEXT,
+        adult INTEGER,
+        poster_path TEXT,
+        backdrop_path TEXT,
+        original_language TEXT,
+        weighted_rating REAL,
+        has_english_title INTEGER,
+        title_length INTEGER,
+        overview_length INTEGER
         )
         ''')
         
@@ -86,10 +87,16 @@ class DatabaseConnector:
         if "genre_list" in df_to_store.columns:
             df_to_store = df_to_store.drop(columns=["genre_list"])
         
-        # Store in database
-        df_to_store.to_sql("movies", self.engine, if_exists="replace", index=False)
+        # Connect to database
+        conn = sqlite3.connect(self.db_path)
+        
+        # Store in database using pandas to_sql but with sqlite3 connection
+        df_to_store.to_sql("movies", conn, if_exists="replace", index=False)
         
         print(f"Stored {len(df_to_store)} movies in the database")
+        
+        # Close connection
+        conn.close()
     
     def get_movies(self) -> pd.DataFrame:
         """
@@ -98,7 +105,10 @@ class DatabaseConnector:
         Returns:
             DataFrame containing all movies
         """
-        return pd.read_sql("SELECT * FROM movies", self.engine)
+        conn = sqlite3.connect(self.db_path)
+        df = pd.read_sql("SELECT * FROM movies", conn)
+        conn.close()
+        return df
     
     def get_top_rated_movies(self, limit: int = 10) -> pd.DataFrame:
         """
@@ -110,13 +120,16 @@ class DatabaseConnector:
         Returns:
             DataFrame with top rated movies
         """
+        conn = sqlite3.connect(self.db_path)
         query = f"""
         SELECT id, title, release_year, vote_average, vote_count, weighted_rating
         FROM movies
         ORDER BY weighted_rating DESC
         LIMIT {limit}
         """
-        return pd.read_sql(query, self.engine)
+        df = pd.read_sql(query, conn)
+        conn.close()
+        return df
     
     def get_movies_by_year(self) -> pd.DataFrame:
         """
@@ -125,6 +138,7 @@ class DatabaseConnector:
         Returns:
             DataFrame with movie counts by year
         """
+        conn = sqlite3.connect(self.db_path)
         query = """
         SELECT release_year, COUNT(*) as movie_count
         FROM movies
@@ -132,4 +146,6 @@ class DatabaseConnector:
         GROUP BY release_year
         ORDER BY release_year
         """
-        return pd.read_sql(query, self.engine)
+        df = pd.read_sql(query, conn)
+        conn.close()
+        return df
