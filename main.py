@@ -40,6 +40,16 @@ def main():
     print("\n--- Step 4: Generating visualizations ---")
     dashboard = MovieDashboard(db)
     dashboard.generate_visualizations()
+
+    # Step 5 (optional): Analyze trends in the data
+    print("\n--- Step 5: Analyzing trends in movie data ---")
+    from processor.TrendDetector import TrendDetector
+    trend_detector = TrendDetector()
+    trend_detector.detect_rating_trends(movies_df)
+    trend_detector.detect_genre_trends(movies_df)
+    trend_detector.detect_popularity_trends(movies_df)
+    trend_detector.visualize_trends()
+    print("Trend analysis completed. Visualizations saved to 'visualizations' directory.")
     
     elapsed_time = time.time() - start_time
     print(f"\nDataHarvester pipeline completed in {elapsed_time:.2f} seconds!")
